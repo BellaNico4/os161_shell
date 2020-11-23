@@ -35,6 +35,7 @@
 #include "opt-shell.h"
 #include <copyinout.h>
 #include <limits.h>
+#include <proc.h>
 
 
 #define SYSTEM_OPEN_MAX (10 * OPEN_MAX)
@@ -79,21 +80,19 @@ __DEAD void enter_new_process(int argc, userptr_t argv, userptr_t env,
 int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 #if OPT_SHELL
-struct openfile;
-void openfileIncrRefCount(struct openfile *of);
-void openfileDecrRefCount(struct openfile *of);
-int sys_open(userptr_t path, int openflags, mode_t mode, int *errp);
-int sys_close(int fd);
-int sys_write(int fd, userptr_t buf_ptr, size_t size);
-int sys_read(int fd, userptr_t buf_ptr, size_t size);
+int sys_open(struct proc *p, userptr_t path, int openflags, mode_t mode, int32_t *retval);
+int sys_close(int fd , int32_t *retval);
+int sys_write(int fd, userptr_t buf_ptr, size_t size, int32_t *retval);
+int sys_read(int fd, userptr_t buf_ptr, size_t size, int32_t *retval);
 void sys__exit(int status);
 int sys_waitpid(pid_t pid, userptr_t statusp, int options,pid_t* retval);
 pid_t sys_getpid(void);
 pid_t sys_fork(struct trapframe *ctf,pid_t* retval);
-int sys__getcwd(char* buf, size_t buflen);
+int sys__getcwd(char* buf, size_t buflen, int32_t *retval);
+int sys_chdir(const char* pathname, int32_t *retval);
 int sys_execv(char *progname, char *args[]);
-int sys_lseek(int fd ,off_t offset, int start);
-int sys_dup2(int oldfd,int newfd);
+int sys_lseek(int fd, off_t pos, int whence, int64_t *retval);
+int sys_dup2(int oldfd,int newfd, int32_t *retval);
 int sys_remove(userptr_t pathname, int32_t *retval);
 
 #endif

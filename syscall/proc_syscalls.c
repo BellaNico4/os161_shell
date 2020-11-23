@@ -113,6 +113,8 @@ int sys_fork(struct trapframe *ctf,pid_t* retval) {
 		proc_destroy(newp); 
 		return ENOMEM; 
 	}
+
+	proc_file_table_copy(curproc, newp);
 	tf_child = kmalloc(sizeof(struct trapframe));
 	if(tf_child == NULL){
 		proc_destroy(newp);
@@ -311,4 +313,3 @@ int sys_execv(char *progname, char *args[]){
 
 
 #endif
-
