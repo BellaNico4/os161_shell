@@ -139,8 +139,10 @@ int sys_fork(struct trapframe *ctf,pid_t* retval) {
   return  0;
 }
 
-
+struct lock* exec_lk = NULL;
 int sys_execv(char *progname, char *args[]){
+	if(exec_lk == NULL)
+		exec_lk = lock_create("Exec_lock");
 	struct addrspace *as;
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
@@ -148,6 +150,7 @@ int sys_execv(char *progname, char *args[]){
 	int argc=0;
 	int i = 0,len,j;
 	struct addrspace * old_as;
+	lock_acquire(exec_lk);
 	char* garbage = kmalloc( (ARG_MAX+1) *sizeof(char));
 	char* path_name = kmalloc( (PATH_MAX+1) *sizeof(char));
 	size_t size = 0;
@@ -155,10 +158,6 @@ int sys_execv(char *progname, char *args[]){
 	result = copyinstr((userptr_t)progname, path_name, PATH_MAX, &size);
 	if(result)
 		return result;	
-	char** argv = (char **) kmalloc(sizeof (args) * sizeof (char *));
-	if (!argv) {
-	   return -1;
-	}
 	/*if (args == NULL)
 		argc = 0;
 	else*/
@@ -185,11 +184,14 @@ int sys_execv(char *progname, char *args[]){
 		}
 		argc = i;
 	}
-		
+	char** argv = (char **) kmalloc(argc * sizeof (char *));
+	if (!argv) {
+	   return -1;
+	}
 	// looping through the arguments to copy into the new array.
 	for (i = 0;i < argc; i++) {
 
-	len = strlen(args[i]) + 4 - (strlen(args[i]) % 4);
+	len = strlen(args[i]) + 8 - (strlen(args[i]) % 8); //alloco a multiplit di 8 TO DO OCCHIO
 	argv[i] = (char *) kmalloc(len);
 	if (!argv[i]) {
 	    panic("Out of memory copying argument\n");
@@ -208,6 +210,7 @@ int sys_execv(char *progname, char *args[]){
 	if (result) {
 		return result;
 	}
+	vaddr_t old_stack = (vaddr_t)curthread->t_stack; //BOH
 
 	KASSERT(proc_getas() != NULL);
 	old_as = curproc->p_addrspace;
@@ -230,26 +233,27 @@ int sys_execv(char *progname, char *args[]){
 		vfs_close(v);
 		return result;
 	}
-
 	/* Done with the file now. */
 	vfs_close(v);
-
+	kfree(path_name);
+	kfree(garbage);
+	lock_release(exec_lk);
 	/* Define the user stack in the address space */
 	result = as_define_stack(as, &stackptr);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		return result;
 	}
-	as_destroy(old_as);
 	
-
+	//vaddr_t new_stack = curthread->t_stack;
+	//curthread ->t_stack = (void*)old_stack;
 	//Copy arguments from the kernel to the users stack.
 	size_t actual;
 	vaddr_t topstack[argc];
 	// Looping through the array to copy the arguments into the stack.
 	// The stack is bottom up, so we start with the last argument of argv
 	for (i = argc - 1; i >= 0; i--) {
-	len = strlen(argv[i]) + 4 - (strlen(argv[i]) % 4); //modified here
+	len = strlen(argv[i]) + 8 - (strlen(argv[i]) % 8); //modified here
 	// Decrement the stack pointer to copy in the arguments.
 	stackptr -= len;
 	// copy the arguments into the stack and free them from argv.
@@ -263,12 +267,12 @@ int sys_execv(char *progname, char *args[]){
 	topstack[argc - i - 1] = stackptr;
 	}
 	kfree(argv);
-	kfree(path_name);
-	kfree(garbage);
+	
 	// decrement the stack pointer and add 4 null bytes of padding.
 	stackptr -= 4;
-	char nullbytes[4];
-	nullbytes[0] = nullbytes[1] = nullbytes[2] = nullbytes[3] = 0x00;
+	char nullbytes[8];
+	for (i = 0; i < 8 ; i++)
+		nullbytes[i] = 0x00;
 	result = copyoutstr(nullbytes, (userptr_t) stackptr, 4, &actual);
 	if(result != 0){
 	    kprintf("copyoutstr failed: %s\n", strerror(result));
@@ -284,9 +288,12 @@ int sys_execv(char *progname, char *args[]){
 	    return result;
 	}
 	}
-			
+	as_destroy(old_as);
+
+		
 
 	/* Warp to user mode. */
+
 	enter_new_process(argc /*argc*/, (userptr_t) stackptr/*userspace addr of argv*/,
 			  NULL /*userspace addr of environment*/,
 			  stackptr, entrypoint);
