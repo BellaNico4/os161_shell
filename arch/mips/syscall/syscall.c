@@ -143,9 +143,7 @@ syscall(struct trapframe *tf)
                 break;
 
 	case SYS_getpid:
-	        retval = sys_getpid();
-                if (retval<0) err = ENOSYS; 
-		else err = 0;
+	        err = sys_getpid((pid_t*)&retval);
                 break;
 
 	case SYS_open:

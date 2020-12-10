@@ -91,6 +91,7 @@ struct proc {
 	pid_t parent_p_pid;
 	struct semaphore *p_sem;
 	struct fileTableEntry *fileTable[OPEN_MAX];
+	int wnohang;
 #endif
 
 };

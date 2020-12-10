@@ -58,8 +58,12 @@ runprogram(char *progname,char** args,int argc)
 	struct addrspace *as;
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
+	int k,tot_len=0;
 	int result;
 
+	if (argc > 300){
+		return E2BIG;
+	}
 	/* Open the file. */
 	result = vfs_open(progname, O_RDONLY, 0, &v);
 	if (result) {
@@ -102,18 +106,30 @@ runprogram(char *progname,char** args,int argc)
 	int len, i,j;
 	char** argv = (char **) kmalloc(sizeof (args) * sizeof (char *));
 	if (!argv) {
-	   return -1;
+	   	return ENOMEM;
 	}
 
-	// looping through the arguments to copy into the new array.
+	/* here i'm looping trough arguments, copyin them in kernel space, allocating with 4 byte padding */
 	for (i = 0; i < argc; i++) {
-
 		len = strlen(args[i]) + 4 - (strlen(args[i]) % 4);
+		tot_len+=len;
+		/*Problem: passed more than arg max bytes */
+
+		if(tot_len>= ARG_MAX){
+			for (k = 0;k < i; k++) {
+				kfree(argv[k]);
+			}
+			kfree(argv);
+			return E2BIG;
+		}
 		argv[i] = (char *) kmalloc(len);
 		if (!argv[i]) {
-			panic("Out of memory copying argument\n");
+			for (k = 0;k < i; k++) {
+			kfree(argv[k]);
+			}
+		kfree(argv);
+		return ENOMEM;
 		}
-
 		// Put '\0' in each of the spots.
 		for (j = 0; j < len; j++)
 			argv[i][j] = '\0';
@@ -121,28 +137,30 @@ runprogram(char *progname,char** args,int argc)
 		memcpy(argv[i], args[i], strlen(args[i]));
 	}
 	
-	//Copy arguments from the kernel to the users stack.
+	
 	size_t actual;
 	vaddr_t topstack[argc];
-	// Looping through the array to copy the arguments into the stack.
-	// The stack is bottom up, so we start with the last argument of argv
+	/* top stack here will contain the addresses of the arguments in the stack */
 	for (i = argc - 1; i >= 0; i--) {
 		len = strlen(argv[i]) + 4 - (strlen(argv[i]) % 4);
-		// Decrement the stack pointer to copy in the arguments.
+		
 		stackptr -= len;
-		// copy the arguments into the stack and free them from argv.
+		
 		result = copyoutstr(argv[i], (userptr_t) stackptr, len, &actual);
 		if(result != 0){
-			kprintf("copyoutstr failed: %s\n", strerror(result));
+			for (k = 0;k < argc; k++) {
+				kfree(argv[k]);
+			}
+			kfree(argv);
 			return result;
 		}
 	kfree(argv[i]);
-	// save the stack address of the arguments in the original order.
+	/* saving args addresses */
 	topstack[argc - i - 1] = stackptr;
 	}
 	kfree(argv);
 
-	// decrement the stack pointer and add 4 null bytes of padding.
+	/* adding padding */
 	stackptr -= 4;
 	char nullbytes[4];
 	nullbytes[0] = nullbytes[1] = nullbytes[2] = nullbytes[3] = 0x00;
@@ -152,7 +170,7 @@ runprogram(char *progname,char** args,int argc)
 	    return result;
 	}
 
-	// writing the addresses of the arguments in the stack, into the stack.
+	/* copy args addresses into the stack */
 	for (i = 0; i < argc; i++) {
 		stackptr -= 4;
 		result = copyout(&topstack[i], (userptr_t) stackptr, sizeof (topstack[i]));
@@ -161,7 +179,8 @@ runprogram(char *progname,char** args,int argc)
 			return result;
 		}
 	}
-			
+
+	/*now the stack is ready*/		
 
 	/* Warp to user mode. */
 	enter_new_process(argc /*argc*/, (userptr_t) stackptr/*userspace addr of argv*/,

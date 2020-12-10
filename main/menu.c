@@ -31,6 +31,7 @@
 #include <kern/errno.h>
 #include <kern/reboot.h>
 #include <kern/unistd.h>
+#include <kern/wait.h>
 #include <limits.h>
 #include <lib.h>
 #include <uio.h>
@@ -96,6 +97,7 @@ cmd_progthread(void *ptr, unsigned long nargs)
 	if (result) {
 		kprintf("Running program %s failed: %s\n", args[0],
 			strerror(result));
+			sys__exit(result);
 		return;
 	}
 
@@ -139,7 +141,7 @@ common_prog(int nargs, char **args)
 	}
 	#if OPT_SHELL
 	int exit_code = proc_wait(proc);
-	kprintf("Process returned = %d\n",exit_code);
+	kprintf("Process returned = %d\n",_WVAL(exit_code));
 	#endif
 	/*
 	 * The new process will be destroyed when the program exits...

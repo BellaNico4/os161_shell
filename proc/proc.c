@@ -220,7 +220,7 @@ proc_create(const char *name)
 	proc -> parent_p_pid = 1;
 	bzero(proc->fileTable,OPEN_MAX*sizeof(struct openfile *));
 	InitOpenFile(proc);
-
+	proc->wnohang = 0;
 #endif
 	return proc;
 }
@@ -493,7 +493,7 @@ int proc_wait(struct proc *proc)
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);
 
-	/* wait on semaphore or condition variable */
+	/* wait on semaphore */
 
 	P(proc->p_sem);
 
