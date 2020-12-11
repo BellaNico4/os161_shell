@@ -29,6 +29,7 @@
 #include <kern/wait.h>
 #if OPT_SHELL
 
+extern struct tableOpenFile TabFile;
 
 void
 sys__exit(int status)
@@ -42,9 +43,6 @@ sys__exit(int status)
 	panic("thread_exit returned\n");
 
 }
-
-
-
 
 int
 sys_waitpid(pid_t pid, userptr_t statusp, int options,pid_t* retval)
@@ -98,6 +96,7 @@ call_enter_forked_process(void *tfv, unsigned long dummy) {
 }
 
 int sys_fork(struct trapframe *ctf,pid_t* retval) {
+
 	struct trapframe *tf_child;
 	struct proc *newp;
 	int result;
@@ -142,6 +141,7 @@ int sys_fork(struct trapframe *ctf,pid_t* retval) {
 }
 
 int sys_execv(char *progname, char *args[]){
+	
 	struct addrspace *as;
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;

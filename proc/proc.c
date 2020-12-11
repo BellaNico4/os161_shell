@@ -217,6 +217,7 @@ proc_create(const char *name)
 	
 	#if OPT_SHELL
 	proc_init_waitpid(proc,name);
+	proc->close_lk = lock_create("close_lk");
 	proc -> parent_p_pid = 1;
 	bzero(proc->fileTable,OPEN_MAX*sizeof(struct openfile *));
 	InitOpenFile(proc);
@@ -326,6 +327,7 @@ void proc_destroy(struct proc *proc)
 	spinlock_cleanup(&proc->p_lock);
 #if OPT_SHELL
 	proc_end_waitpid(proc);
+	lock_destroy(proc->close_lk);
 #endif
 	kfree(proc->p_name);
 	kfree(proc);
@@ -518,7 +520,9 @@ void proc_file_table_copy(struct proc *psrc, struct proc *pdest)
 		pdest->fileTable[fd] = ftesrc;
 		if (ftesrc != NULL && ftesrc != ftedest)
 		{
+			lock_acquire(ftesrc->fte_lock);
 			ftesrc->fteCnt++;
+			lock_release(ftesrc->fte_lock);
 		}
 
 	}

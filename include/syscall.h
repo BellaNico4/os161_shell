@@ -43,8 +43,11 @@
 struct openfile
 {
   struct vnode *vn;
-  off_t offset;
   unsigned int countRef;
+  int reader;
+  int writer;
+  struct lock *lk_reader;
+  struct lock *lk_writer;
 };
 
 struct tableOpenFile
