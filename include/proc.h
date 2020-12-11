@@ -93,6 +93,7 @@ struct proc {
 	struct semaphore *p_sem;
 	struct lock *close_lk;
 	struct fileTableEntry *fileTable[OPEN_MAX];
+	int wnohang;
 #endif
 
 };
