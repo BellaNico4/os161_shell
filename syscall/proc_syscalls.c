@@ -1,7 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * 
-* Syscall file for LAB2 PDS
-* This file contain the "exit()" syscall
-* used to terminate a process.
+* This file contains the implementation of the
+* syscalls needed for the project
 *
 *
 *
@@ -132,8 +131,6 @@ int sys_fork(struct trapframe *ctf,pid_t* retval) {
 	}
 	memcpy(tf_child, ctf, sizeof(struct trapframe));
 
-	/* TO BE DONE: linking parent/child, so that child terminated 
-		on parent exit */
 	newp->parent_p_pid = curproc->p_pid;
 	result = thread_fork(
 			curthread->t_name, newp,

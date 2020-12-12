@@ -69,6 +69,7 @@ struct fileTableEntry
   int flags;
   int fd;
   int fteCnt;
+  struct lock* fte_lock;
 
 };
 #endif
@@ -90,6 +91,7 @@ struct proc {
     pid_t p_pid;                    /* process pid */
 	pid_t parent_p_pid;
 	struct semaphore *p_sem;
+	struct lock* close_lk;
 	struct fileTableEntry *fileTable[OPEN_MAX];
 	int wnohang;
 #endif
