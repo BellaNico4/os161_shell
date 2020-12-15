@@ -101,7 +101,8 @@ int sys__getcwd(char *buf, size_t buflen, int32_t *retval)
   kfree(name);
   return 0;
 }
-
+/* struct proc *p may be not null due to the integration of console ( Open of stdin/out/err )
+ classic call in arch/mips/syscall/syscall.c struct proc*p is always NULL */
 int sys_open(struct proc *p, userptr_t path, int openflags, mode_t mode, int32_t *retval)
 {
 
