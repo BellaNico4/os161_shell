@@ -181,7 +181,10 @@ syscall(struct trapframe *tf)
 	case SYS_dup2:
 		err = sys_dup2((int)tf->tf_a0, (int)tf->tf_a1, &retval);
 		break;
-
+        /* case with 64 bit argument 
+	  whence in stack 
+	  offset by a2/a3
+	  a1 empty*/
 	case SYS_lseek:
 		err = copyin((userptr_t)(tf->tf_sp+16), &whence, sizeof(int));
 		if(err)
